@@ -30,14 +30,6 @@ class BackyardFlyer(Drone):
         # initial state
         self.flight_state = States.MANUAL
 
-        # initial box flight plan
-        self.box = [
-            (10, 0, 5, 0),
-            (10, 10, 5, 0),
-            (0, 10, 5, 0),
-            (0, 0, 5, 0)
-        ]
-
         # TODO: Register all your callbacks here
         self.register_callback(MsgID.LOCAL_POSITION, self.local_position_callback)
         self.register_callback(MsgID.LOCAL_VELOCITY, self.velocity_callback)
@@ -51,6 +43,9 @@ class BackyardFlyer(Drone):
         """
         if self.flight_state == States.TAKEOFF:
 
+            # calculate waypoints
+            self.all_waypoints = self.calculate_box()
+
             # coordinate conversion 
             altitude = -1.0 * self.local_position[2]
 
@@ -59,18 +54,10 @@ class BackyardFlyer(Drone):
                 self.waypoint_transition()
 
         elif self.flight_state == States.WAYPOINT:
-            # check if altitude is within 95% of target
-            north = self.local_position[0]
-            east = self.local_position[1]
-            print(0.9 * (self.target_position[0]+0.000001), north, 1.1 * (self.target_position[0]+0.000001), 0.9 * (self.target_position[1]+0.000001), east, 1.1 * (self.target_position[1]+0.000001))
-            # north = self.local_position[0]
-            # east = self.local_position[1]
-            if 0.9 * (self.target_position[0]+0.000001) < north < 1.1 * (self.target_position[0]+0.000001) and \
-               0.9 * (self.target_position[1]+0.000001) < east  < 1.1 * (self.target_position[1]+0.000001):
+
+            # check if north/east/alt is within 1.0 of target
+            if np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < 1.0:
                 self.waypoint_transition()
-            # if north > 0.95 * self.target_position[0] and \
-            #    east  > 0.95 * self.target_position[1]:
-            #     self.waypoint_transition()
 
     def velocity_callback(self):
         """
@@ -103,12 +90,14 @@ class BackyardFlyer(Drone):
         
         1. Return waypoints to fly a box
         """
-        wpt = None
-        try:
-            wpt = self.box.pop(0)
-        except:
-            print("No more waypoints")
-        return wpt
+        box = [
+            (10, 0, 3, 0),
+            (10, 10, 3, 0),
+            (0, 10, 3, 0),
+            (0, 0, 3, 0)
+        ]
+
+        return box
 
     def arming_transition(self):
         """TODO: Fill out this method
@@ -150,8 +139,14 @@ class BackyardFlyer(Drone):
         2. Transition to WAYPOINT state
         """
         print("waypoint transition")
-        self.target_position = self.calculate_box()
-        if self.target_position:
+        wpt = None
+        try:
+            wpt = self.all_waypoints.pop(0)
+        except:
+            print("No more waypoints")
+
+        if wpt:
+            self.target_position = wpt
             self.cmd_position(self.target_position[0],
                             self.target_position[1],
                             self.target_position[2],
