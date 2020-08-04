@@ -56,7 +56,10 @@ class BackyardFlyer(Drone):
 
         This triggers when `MsgID.LOCAL_VELOCITY` is received and self.local_velocity contains new data
         """
-        pass
+        if self.flight_phase == Phases.LANDING:
+            if ((self.global_position[2] - self.global_home[2] < 0.1) and
+            abs(self.local_position[2]) < 0.01):
+                self.disarming_transition()
 
     def state_callback(self):
         """
