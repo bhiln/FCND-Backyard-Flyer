@@ -41,7 +41,14 @@ class BackyardFlyer(Drone):
 
         This triggers when `MsgID.LOCAL_POSITION` is received and self.local_position contains new data
         """
-        pass
+        if self.flight_phase == Phases.TAKEOFF:
+
+            # coordinate conversion 
+            altitude = -1.0 * self.local_position[2]
+
+            # check if altitude is within 95% of target
+            if altitude > 0.95 * self.target_position[2]:
+                self.landing_transition()
 
     def velocity_callback(self):
         """
@@ -75,6 +82,14 @@ class BackyardFlyer(Drone):
         4. Transition to the ARMING state
         """
         print("arming transition")
+        self.take_control()
+        self.arm()
+
+        self.set_home_position(self.global_position[0],
+                               self.global_position[1],
+                               self.global_position[2])
+
+        self.flight_phase = Phases.ARMING
 
     def takeoff_transition(self):
         """TODO: Fill out this method
@@ -84,6 +99,12 @@ class BackyardFlyer(Drone):
         3. Transition to the TAKEOFF state
         """
         print("takeoff transition")
+        target_altitude = 3.0
+        self.target_position[2] = target_altitude
+        self.takeoff(target_altitude)
+
+        flight_phase = Phases.TAKEOFF
+
 
     def waypoint_transition(self):
         """TODO: Fill out this method
